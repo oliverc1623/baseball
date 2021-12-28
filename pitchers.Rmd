@@ -1,0 +1,93 @@
+---
+title: "pitchers"
+author: "Oliver Chang"
+date: "12/25/2021"
+output: html_document
+---
+
+```{r}
+library(Lahman)
+library(tidyverse)
+library(stringi)
+data(Pitching)
+data(People)
+data("Teams")
+data("TeamsFranchises")
+```
+
+```{r}
+clean_people <- People %>% select(playerID, birthYear, birthCountry, deathYear, nameFirst, nameLast, weight, height, bats, throws) %>% 
+                mutate(fullname = tolower(paste(nameFirst,nameLast))) %>% 
+                select(-nameFirst, -nameLast)
+clean_people
+```
+
+```{r}
+search_player <- function(name){
+  search_res <- grepl(tolower(name), clean_people$fullname)
+  indx <- which(search_res)
+  return(indx)
+}
+single_player <- clean_people[search_player("Julio Urias"),]
+single_id <- single_player$playerID
+
+pitcher_df <- Pitching %>% filter(playerID == single_id)
+year_span <- pitcher_df$yearID
+games_started <- pitcher_df$GS
+
+paired_vals <- c(year_span, games_started)
+
+games_pitched = pitcher_df
+
+firstName <- People$nameFirst[People$playerID == single_id]
+lastName <- People$nameLast[People$playerID == single_id]
+
+if(sum(pitcher_df$GS) == 0 && sum(pitcher_df$SV > 0)){
+  ranged_df <- Pitching %>% 
+    filter(yearID >= min(year_span), yearID <= max(year_span), ERA <= 10, ERA > 0) 
+  ranged_df %>% filter(SV > round(mean(ranged_df$SV))) %>% 
+    ggplot() + 
+    geom_boxplot(aes(as.factor(yearID), ERA, fill=lgID)) + 
+    geom_jitter(aes(x=as.factor(yearID), ERA), color="black", size=.1, width = 0.2) + 
+    geom_point(aes(x=as.factor(yearID), ERA), color="blue", data = pitcher_df, size=3) + 
+    ggtitle(paste(firstName, lastName, "vs Rest of MLB")) + 
+    xlab("Year") + 
+    labs(fill='League')
+} else {
+  ranged_df <- Pitching %>% 
+    filter(yearID >= min(year_span), yearID <= max(year_span), ERA <= 10, ERA > 0) 
+  ranged_df %>% filter(GS > round(mean(ranged_df$GS))) %>%
+    ggplot() + 
+    geom_boxplot(aes(as.factor(yearID), ERA, fill=lgID)) + 
+    geom_point(aes(x=as.factor(yearID), ERA), color="blue", data = pitcher_df, size=3) + 
+    ggtitle(paste(firstName, lastName, "vs Rest of MLB")) + 
+    xlab("Year") + 
+    labs(fill='League')
+}
+```
+
+
+```{r}
+length(pitcher_df)
+```
+
+
+```{r}
+Pitching %>% filter(yearID == 2008, playerID==single_id)
+```
+
+
+```{r}
+
+people_ab = merge(People, Batting, by="playerID") %>% mutate(avg = H/AB) %>% drop_na() %>% filter(yearID >= 1980) %>% select(avg, weight, height) 
+people_ab
+
+people_ab %>% ggplot() + geom_density(aes(weight))
+people_ab %>% ggplot() + geom_density(aes(height))
+```
+
+
+```{r}
+Teams %>% filter(franchID == "LAD")
+```
+
