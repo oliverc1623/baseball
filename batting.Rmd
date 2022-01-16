@@ -1,0 +1,122 @@
+---
+title: "Batting"
+author: "Oliver Chang"
+date: "12/30/2021"
+output: html_document
+---
+
+```{r}
+library(Lahman)
+library(tidyverse)
+library(ggridges)
+library(gganimate)
+library('ggpubr')
+data("Batting")
+data("Schools")
+data("People")
+data("CollegePlaying")
+data("Teams")
+```
+
+```{r}
+team_stats <- Teams %>% 
+  select(yearID, lgID, teamID, G, W, L, R, AB, H, X2B, X3B, HR, BB, HBP, SF) %>% 
+  filter(yearID >= 1973, yearID!=2020, yearID!=1994, yearID!=1995, yearID!=1981) %>% 
+  mutate(BA = H/AB, 
+         singles = H - (X2B+X3B+HR), 
+         OBP=(H+BB+HBP)/(AB+BB+SF+HBP), 
+         SLG=((1*singles)+(2*X2B)+(3*X3B)+(4*HR))/(AB), 
+         OPS = OBP+SLG) 
+```
+
+```{r}
+ba_model <- lm(R ~ BA, data=team_stats)
+bar <- round(summary(ba_model)$r.squared, 3)
+
+ba <- 
+  team_stats %>% 
+  ggplot() + geom_point(aes(x=BA, y=R)) + geom_smooth(aes(x=BA, y=R), method = 'lm') +
+  ggtitle("Batting Average vs Runs", subtitle = paste("R-squared: ", bar)) + 
+  theme(plot.subtitle = element_text(size = 12, color = "red")) + 
+  scale_y_continuous("Runs")
+
+obp_model <- lm(R ~ OBP, data=team_stats)
+obpr <- round(summary(obp_model)$r.squared, 3)
+
+obp <- 
+  team_stats %>% 
+  ggplot() + geom_point(aes(x=OBP, y=R)) + geom_smooth(aes(x=OBP, y=R), method = 'lm') + 
+  ggtitle("On-base Percentage vs Runs", subtitle = paste("R-squared: ", obpr)) + 
+  theme(plot.subtitle = element_text(size = 12, color = "red")) + 
+  scale_y_continuous("Runs")
+
+slg_model <- lm(R ~ SLG, data=team_stats)
+slgr <- round(summary(slg_model)$r.squared, 3)
+
+slg <- 
+  team_stats %>% 
+  ggplot() + geom_point(aes(x=SLG, y=R)) + geom_smooth(aes(x=SLG, y=R), method = 'lm') + 
+  ggtitle("Slugging vs Runs", subtitle = paste("R-squared: ", slgr)) + 
+  theme(plot.subtitle = element_text(size = 12, color = "red")) + 
+  scale_y_continuous("Runs")
+
+ops_model <- lm(R ~ OPS, data=team_stats)
+opsr <- round(summary(ops_model)$r.squared, 3)
+
+ops <- 
+  team_stats %>% 
+  ggplot() + geom_point(aes(x=OPS, y=R)) + geom_smooth(aes(x=OPS, y=R), method = 'lm') + 
+  ggtitle("OPS vs Runs", subtitle = paste("R-squared: ", opsr)) + 
+  theme(plot.subtitle = element_text(size = 12, color = "red")) + 
+  scale_y_continuous("Runs")
+```
+
+
+```{r}
+annotate_figure(ggarrange(ba, obp, slg, ops), top = text_grob("Team Batting Stats vs Runs (1974-2019)", 
+               color = "darkblue", face = "bold", size = 14))
+ggsave("battingstats.png", width = 10, height = 6)
+```
+
+
+```{r}
+sum_model <- lm(R ~ (OPS + BA + SLG + OBP), data=team_stats)
+summary(sum_model)
+```
+
+```{r}
+stats <- team_stats %>% select(R, BA, OBP, SLG, OPS)
+cor(stats)
+```
+
+
+```{r}
+positions <- Fielding %>% select(yearID, playerID, POS, PO)
+battingavgs <- Batting %>% 
+  mutate(BA = H/AB, 
+         singles = H - (X2B+X3B+HR), 
+         OBP=(H+BB+HBP)/(AB+BB+SF+HBP), 
+         SLG=((1*singles)+(2*X2B)+(3*X3B)+(4*HR))/(AB), 
+         OPS = OBP+SLG) %>% 
+  select(playerID, yearID, H, AB, HR, OBP, SLG, OPS, BA)
+
+batting_plus_pos <- left_join(battingavgs, positions, by=c("yearID", "playerID")) %>% drop_na() %>% 
+  filter(yearID >= 1954, BA > 0, BA < 1) %>% 
+  group_by(yearID) %>% 
+  summarise(avgOPS = mean(OPS)) 
+
+batting_plus_pos %>% ggplot() + 
+                      geom_line(aes(x=yearID, y=avgOPS))
+```
+
+```{r}
+graph1.animation = g +
+  transition_reveal(yearID)
+```
+
+```{r}
+animate(graph1.animation, height = 500, width = 800, duration = 10,
+        end_pause = 60, res = 100)
+anim_save("graph.gif")
+```
+
