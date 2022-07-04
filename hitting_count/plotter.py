@@ -39,7 +39,6 @@ def plot_heatmap(df, fname):
 def main(args):
     df = pd.read_csv(args.data)
     df['out'] = df['out'].astype(str)
-    # plot_pitch_outcomes(df, args.name)
     plot_heatmap(df, args.name)
 
 if __name__ == "__main__":

@@ -1,16 +1,11 @@
 import argparse
-from tokenize import String
 import numpy as np
 import pandas as pd
 import seaborn as sns
 sns.set_theme(style="darkgrid")
 import matplotlib.pyplot as plt
-from pybaseball import statcast
-from pybaseball import schedule_and_record
-from pybaseball import batting_stats_range
 from pybaseball import statcast_pitcher
 from pybaseball import playerid_lookup
-from sklearn import tree
 
 def get_player_id(last, name):
     player = playerid_lookup(last, name)
@@ -66,12 +61,9 @@ def augment_df(df):
 def main(args):
     player_id = get_player_id(args.pitcher_last_name, args.pitcher_first_name)
     df = get_df(args.start_date, args.end_date, player_id)
-    # filter df to get Buster posey's
-    # df = df[df['batter']==457763]
     aug_df = augment_df(df)
     aug_df.to_csv("counts_" + args.pitcher_last_name + ".csv")
-    # plot_pitch_outcomes(aug_df, args.pitcher_last_name)
-    # print(aug_df.head())
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Pitcher Sequence Comparer for Pitchers")
